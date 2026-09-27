@@ -3,6 +3,8 @@ package Guia2Grafos;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+//MATRIZ ADYACENCAI
+
 public class Ej2 implements Grafo {
 
     private int[][] matrizAdyacencia;    // se calcula, no se recibe
