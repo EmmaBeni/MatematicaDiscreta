@@ -1,52 +1,199 @@
 package Guia2Grafos;
 
-//si me pide la matriz de adyacencia como un resultado a producur no puede ser la primer impl que toma la matriz de adyacencia como input
-public class Ej2 {
-    public static void main(String[] args) {
-        char[] vertices = {'A', 'B', 'C', 'D', 'E'};
-        char[][] aristas = {
-                {'A', 'B'},
-                {'B', 'C'},
-                {'C', 'C'}, // lazo en C
-                // D no tiene ninguna arista -> aislado
-                // E tampoco -> aislado
-        };
+import java.util.ArrayList;
+import java.util.HashMap;
 
-        Grafo g = new Ej1Mejorado(vertices, aristas);
+public class Ej2 implements Grafo {
 
-        System.out.println("--- Mostrar grafo ---");
-        g.mostrar();
+    private int[][] matrizAdyacencia;    // se calcula, no se recibe
+    private HashMap<Character, Integer> letraAIndice;
+    private char[] indiceALetra;
 
-        System.out.println("\n--- Cantidad de lazos ---");
-        System.out.println(g.contarLazos()); // esperado: 1
+    // input real: vertices + aristas (pares de vertices), no la matriz ya armada
+    public Ej2(char[] vertices, char[][] aristas) {
+        this.indiceALetra = vertices;
+        this.letraAIndice = new HashMap<>();
+        for (int i = 0; i < vertices.length; i++) {
+            letraAIndice.put(vertices[i], i);
+        }
+        this.matrizAdyacencia = calcularMatrizAdyacencia(aristas);
+    }
 
-        System.out.println("\n--- Vertices con lazos ---");
-        for (char c : g.mostrarVerticeLazo()) System.out.print(c + " "); // C
+    private int[][] calcularMatrizAdyacencia(char[][] aristas) {
+        int n = indiceALetra.length;
+        int[][] m = new int[n][n];
+        for (char[] arista : aristas) {
+            int i = letraAIndice.get(arista[0]);
+            int j = letraAIndice.get(arista[1]);
+            m[i][j] = 1;
+            m[j][i] = 1; // simetrico; si i==j (lazo) es redundante pero no molesta
+        }
+        return m;
+    }
 
-        System.out.println("\n\n--- Es D aislado? ---");
-        System.out.println(g.isVerticeAislado('D')); // true
+    @Override
+    public void mostrar() {
+        for (int i = 0; i < matrizAdyacencia.length; i++) {
+            for (int j = 0; j < matrizAdyacencia.length; j++) {
+                if (matrizAdyacencia[i][j] == 1) {
+                    System.out.println(indiceALetra[i] + "-->" + indiceALetra[j]);
+                }
+            }
+        }
+    }
 
-        System.out.println("--- Es A aislado? ---");
-        System.out.println(g.isVerticeAislado('A')); // false
+    @Override
+    public int contarLazos() {
+        int counter = 0;
+        for (int i = 0; i < matrizAdyacencia.length; i++) {
+            if (matrizAdyacencia[i][i] == 1) {
+                counter++;
+            }
+        }
+        return counter;
+    }
 
-        System.out.println("\n--- Cantidad de aislados ---");
-        System.out.println(g.contarVerticesAislados()); // 2
+    @Override
+    public char[] mostrarVerticeLazo() {
+        ArrayList<Character> results = new ArrayList<>();
+        for (int i = 0; i < matrizAdyacencia.length; i++) {
+            if (matrizAdyacencia[i][i] == 1) {
+                results.add(indiceALetra[i]);
+            }
+        }
+        char[] res = new char[results.size()];
+        for (int i = 0; i < res.length; i++) {
+            res[i] = results.get(i);
+        }
+        return res;
+    }
 
-        System.out.println("\n--- Vertices aislados ---");
-        for (char c : g.returnVerticeAislado()) System.out.print(c + " "); // D E
+    @Override
+    public boolean isVerticeAislado(char v) {
+        int indice = letraAIndice.get(v);
+        for (int j = 0; j < matrizAdyacencia.length; j++) {
+            if (matrizAdyacencia[indice][j] == 1) {
+                return false;
+            }
+        }
+        return true;
+    }
 
-        System.out.println("\n\n--- Grafo simplificado (sin lazos, sin aislados) ---");
-        Grafo simplificado = g.simplificar();
-        simplificado.mostrar(); // debería mostrar solo A-B, B-C (sin lazo, sin D ni E)
+    @Override
+    public int contarVerticesAislados() {
+        int counter = 0;
+        for (char letra : letraAIndice.keySet()) {
+            if (isVerticeAislado(letra)) {
+                counter++;
+            }
+        }
+        return counter;
+    }
 
-        System.out.println("\n--- Matriz de adyacencia ---");
-        g.getMatrizAdyacencia();
+    @Override
+    public char[] returnVerticeAislado() {
+        ArrayList<Character> results = new ArrayList<>();
+        for (char letra : letraAIndice.keySet()) {
+            if (isVerticeAislado(letra)) {
+                results.add(letra);
+            }
+        }
+        char[] res = new char[results.size()];
+        for (int i = 0; i < res.length; i++) {
+            res[i] = results.get(i);
+        }
+        return res;
+    }
 
-        System.out.println("\n--- Matriz de incidencia ---");
-        int[][] inc = g.getMatrizIncidencia();
-        for (int[] fila : inc) {
-            for (int val : fila) System.out.print(val + " ");
+    @Override
+    public Grafo simplificar() {
+        int n = matrizAdyacencia.length;
+
+        // 1. copiar matriz sin lazos
+        int[][] sinLazos = new int[n][n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                sinLazos[i][j] = (i == j) ? 0 : matrizAdyacencia[i][j];
+            }
+        }
+
+        // 2. detectar aislados sobre la matriz sin lazos
+        ArrayList<Integer> indicesValidos = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            boolean aislado = true;
+            for (int j = 0; j < n; j++) {
+                if (sinLazos[i][j] == 1) {
+                    aislado = false;
+                    break;
+                }
+            }
+            if (!aislado) {
+                indicesValidos.add(i);
+            }
+        }
+
+        // 3. armar vertices nuevos y aristas nuevas (sin lazos, sin aislados)
+        int nuevoN = indicesValidos.size();
+        char[] nuevosVertices = new char[nuevoN];
+        for (int i = 0; i < nuevoN; i++) {
+            nuevosVertices[i] = indiceALetra[indicesValidos.get(i)];
+        }
+
+        ArrayList<char[]> nuevasAristas = new ArrayList<>();
+        for (int a = 0; a < nuevoN; a++) {
+            for (int b = a + 1; b < nuevoN; b++) { // b=a+1: sin lazos, sin repetir pares
+                int i = indicesValidos.get(a);
+                int j = indicesValidos.get(b);
+                if (matrizAdyacencia[i][j] == 1) {
+                    nuevasAristas.add(new char[]{indiceALetra[i], indiceALetra[j]});
+                }
+            }
+        }
+        char[][] aristasArray = nuevasAristas.toArray(new char[0][]);
+
+        // 4. devolver grafo nuevo, construido igual que el original (vertices + aristas)
+        return new Ej2(nuevosVertices, aristasArray);
+    }
+
+    @Override
+    public void getMatrizAdyacencia() {
+        for (int i = 0; i < matrizAdyacencia.length; i++) {
+            for (int j = 0; j < matrizAdyacencia.length; j++) {
+                System.out.print(matrizAdyacencia[i][j] + " ");
+            }
             System.out.println();
         }
     }
+
+    @Override
+    public int[][] getMatrizIncidencia() {
+        int n = matrizAdyacencia.length;
+
+        ArrayList<int[]> aristas = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            for (int j = i; j < n; j++) {
+                if (matrizAdyacencia[i][j] == 1) {
+                    aristas.add(new int[]{i, j});
+                }
+            }
+        }
+
+        int m = aristas.size();
+        int[][] incidencia = new int[n][m];
+
+        for (int k = 0; k < m; k++) {
+            int i = aristas.get(k)[0];
+            int j = aristas.get(k)[1];
+            if (i == j) {
+                incidencia[i][k] = 2;
+            } else {
+                incidencia[i][k] = 1;
+                incidencia[j][k] = 1;
+            }
+        }
+
+        return incidencia;
+    }
 }
+
+//EN GENERAL ES O(n^2)
